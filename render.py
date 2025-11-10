@@ -1,16 +1,41 @@
 import bpy, math, mathutils, os, sys, glob
 
 MODEL_DIR = os.environ.get("MODEL_DIR", ".")
+MODEL_FILE = os.environ.get("MODEL_FILE", None)         # Optional: specific model file to render
 OUTPUT_PATH = os.environ.get("OUTPUT_PATH", "./render/")
-IMG = 70
-TILT = float(os.environ.get("TILT", "60"))              # 90 = top-down
+TEXTURES_DIR = os.environ.get("TEXTURES_DIR", None)     # Optional: directory containing texture files
+RECURSIVE = os.environ.get("RECURSIVE", "0") == "1"     # Search recursively for model files
+EXTENSIONS = os.environ.get("EXTENSIONS", "glb,gltf,blend,fbx,obj")  # Comma-separated list of extensions
+IMG = os.environ.get("IMG", 150)
+TILT = float(os.environ.get("TILT", "30"))              # 90 = top-down
 ENGINE = os.environ.get("ENGINE", "CYCLES")             # CYCLES is robust headless
 UNLIT = os.environ.get("UNLIT", "1") == "1"             # emission-only
 
-# Find all GLB/GLTF files in the directory
-glb_files = glob.glob(os.path.join(MODEL_DIR, "*.glb")) + glob.glob(os.path.join(MODEL_DIR, "*.gltf"))
-if not glb_files:
-    raise Exception(f"No GLB/GLTF files found in {MODEL_DIR}")
+# Find model files to render
+if MODEL_FILE:
+    # Render specific model file
+    if not os.path.exists(MODEL_FILE):
+        raise Exception(f"Model file not found: {MODEL_FILE}")
+    glb_files = [MODEL_FILE]
+else:
+    # Parse extensions
+    ext_list = [ext.strip() for ext in EXTENSIONS.split(",")]
+
+    glb_files = []
+    if RECURSIVE:
+        # Search recursively for model files
+        print(f"Searching recursively in {MODEL_DIR} for extensions: {ext_list}")
+        for ext in ext_list:
+            pattern = os.path.join(MODEL_DIR, "**", f"*.{ext}")
+            glb_files.extend(glob.glob(pattern, recursive=True))
+    else:
+        # Find all model files in the directory (non-recursive)
+        for ext in ext_list:
+            pattern = os.path.join(MODEL_DIR, f"*.{ext}")
+            glb_files.extend(glob.glob(pattern))
+
+    if not glb_files:
+        raise Exception(f"No model files with extensions [{EXTENSIONS}] found in {MODEL_DIR}")
 
 print(f"Found {len(glb_files)} model(s) to render: {[os.path.basename(f) for f in glb_files]}")
 
@@ -18,7 +43,7 @@ print(f"Found {len(glb_files)} model(s) to render: {[os.path.basename(f) for f i
 for model_idx, MODEL_PATH in enumerate(glb_files):
     model_name = os.path.splitext(os.path.basename(MODEL_PATH))[0]
     print(f"\n{'='*60}")
-    print(f"Processing model {model_idx + 1}/{len(glb_files)}: {model_name}")
+    print(f"Processing model {model_idx + 1}/{len(glb_files)}: {MODEL_PATH}")
     print(f"{'='*60}")
 
     # --- clean scene
@@ -27,14 +52,35 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
 
     # --- import
     ext = os.path.splitext(MODEL_PATH)[1].lower()
-    if ext == ".obj":
-        bpy.ops.import_scene.obj(filepath=MODEL_PATH)
+    if ext == ".blend":
+        bpy.ops.wm.open_mainfile(filepath=MODEL_PATH)
+    elif ext == ".obj":
+        bpy.ops.wm.obj_import(filepath=MODEL_PATH)
     elif ext == ".fbx":
         bpy.ops.import_scene.fbx(filepath=MODEL_PATH)
     elif ext in (".glb", ".gltf"):
         bpy.ops.import_scene.gltf(filepath=MODEL_PATH)
     else:
         raise Exception(f"Unsupported model type: {ext}")
+
+    # Remap texture paths if TEXTURES_DIR is provided
+    if TEXTURES_DIR and os.path.exists(TEXTURES_DIR):
+        print(f"Remapping textures to: {TEXTURES_DIR}")
+        for img in bpy.data.images:
+            if img.filepath:
+                # Skip if the image already exists on disk at current path
+                if os.path.exists(img.filepath):
+                    continue
+                # Get just the filename
+                img_basename = os.path.basename(img.filepath)
+                # Try to find it in the textures directory
+                new_path = os.path.join(TEXTURES_DIR, img_basename)
+                if os.path.exists(new_path):
+                    img.filepath = new_path
+                    img.reload()
+                    print(f"  Remapped: {img_basename}")
+                else:
+                    print(f"  ⚠️  Texture not found in {TEXTURES_DIR}: {img_basename}")
 
     # collect all mesh objs
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
