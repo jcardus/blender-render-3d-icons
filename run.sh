@@ -26,4 +26,4 @@ mkdir -p "$(dirname "$OUTPUT_PATH")"
 # UNLIT=0 MODEL_DIR=./cars RECURSIVE=1 EXTENSIONS=fbx TEXTURES_DIR=./textures OUTPUT_PATH="$OUTPUT_PATH" blender -b -P render.py
 
 # Example: Render specific model file
-FILE_FILTER=veh_sedan_01 RECURSIVE=1 UNLIT=0 EXTENSIONS="obj" MODEL_DIR="./city_veh" TEXTURES_DIR=./textures TEXTURE_FILE=./textures/city_vehicles_pallete.png OUTPUT_PATH="$OUTPUT_PATH" blender -b -P render.py
+IMG=75 FILE_FILTER=veh_pickup_03 RECURSIVE=1 UNLIT=1 EXTENSIONS="obj" MODEL_DIR="./city_veh" TEXTURES_DIR=./textures TEXTURE_FILE=./textures/city_vehicles_pallete.png OUTPUT_PATH="$OUTPUT_PATH" blender -b -P render.py

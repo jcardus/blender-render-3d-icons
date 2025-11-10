@@ -10,6 +10,7 @@ FILE_FILTER = os.environ.get("FILE_FILTER", "")       # Optional: string to filt
 EXTENSIONS = os.environ.get("EXTENSIONS", "glb,gltf,blend,fbx,obj")  # Comma-separated list of extensions
 IMG = os.environ.get("IMG", 150)
 TILT = float(os.environ.get("TILT", "30"))              # 90 = top-down
+ANGLES = int(os.environ.get("ANGLES", "30"))            # Number of angles to render
 ENGINE = os.environ.get("ENGINE", "CYCLES")             # CYCLES is robust headless
 UNLIT = os.environ.get("UNLIT", "1") == "1"             # emission-only
 
@@ -242,15 +243,15 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
             bg_node.inputs['Strength'].default_value = 0.7
 
 
-    # --- render 60 angles ---
-    for i in range(60):
-        angle = math.pi + (i / 60) * 2 * math.pi
+    # --- render angles ---
+    for i in range(ANGLES):
+        angle = math.pi + (i / ANGLES) * 2 * math.pi
         cam.location = (radius * math.sin(angle) * math.sin(tilt),
                         -radius * math.cos(angle) * math.sin(tilt),
                         radius * math.cos(tilt))
         scene.render.filepath = os.path.join(os.path.dirname(OUTPUT_PATH), f"{model_name}_{i:03d}.png".lower())
         bpy.ops.render.render(write_still=True)
-    print(f"✅ Rendered 60 angles for {model_name}.")
+    print(f"✅ Rendered {ANGLES} angles for {model_name}.")
 
 print(f"\n{'='*60}")
 print(f"✅ All {len(glb_files)} model(s) rendered successfully!")
