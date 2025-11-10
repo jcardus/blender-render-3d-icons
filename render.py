@@ -4,7 +4,9 @@ MODEL_DIR = os.environ.get("MODEL_DIR", ".")
 MODEL_FILE = os.environ.get("MODEL_FILE", None)         # Optional: specific model file to render
 OUTPUT_PATH = os.environ.get("OUTPUT_PATH", "./render/")
 TEXTURES_DIR = os.environ.get("TEXTURES_DIR", None)     # Optional: directory containing texture files
+TEXTURE_FILE = os.environ.get("TEXTURE_FILE", None)     # Optional: fallback texture file to use
 RECURSIVE = os.environ.get("RECURSIVE", "0") == "1"     # Search recursively for model files
+FILE_FILTER = os.environ.get("FILE_FILTER", "")       # Optional: string to filter file names (e.g., "truck" to match only files containing "truck")
 EXTENSIONS = os.environ.get("EXTENSIONS", "glb,gltf,blend,fbx,obj")  # Comma-separated list of extensions
 IMG = os.environ.get("IMG", 150)
 TILT = float(os.environ.get("TILT", "30"))              # 90 = top-down
@@ -24,10 +26,18 @@ else:
     glb_files = []
     if RECURSIVE:
         # Search recursively for model files
-        print(f"Searching recursively in {MODEL_DIR} for extensions: {ext_list}")
-        for ext in ext_list:
-            pattern = os.path.join(MODEL_DIR, "**", f"*.{ext}")
-            glb_files.extend(glob.glob(pattern, recursive=True))
+        if FILE_FILTER:
+            print(f"Searching recursively in {MODEL_DIR} for files matching '{FILE_FILTER}' with extensions: {ext_list}")
+            for ext in ext_list:
+                pattern = os.path.join(MODEL_DIR, "**", f"*.{ext}")
+                all_files = glob.glob(pattern, recursive=True)
+                # Case-insensitive filter
+                glb_files.extend([f for f in all_files if FILE_FILTER.lower() in os.path.basename(f).lower()])
+        else:
+            print(f"Searching recursively in {MODEL_DIR} for extensions: {ext_list}")
+            for ext in ext_list:
+                pattern = os.path.join(MODEL_DIR, "**", f"*.{ext}")
+                glb_files.extend(glob.glob(pattern, recursive=True))
     else:
         # Find all model files in the directory (non-recursive)
         for ext in ext_list:
@@ -63,9 +73,12 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
     else:
         raise Exception(f"Unsupported model type: {ext}")
 
-    # Remap texture paths if TEXTURES_DIR is provided
-    if TEXTURES_DIR and os.path.exists(TEXTURES_DIR):
-        print(f"Remapping textures to: {TEXTURES_DIR}")
+    # Remap texture paths if TEXTURES_DIR or TEXTURE_FILE is provided
+    if (TEXTURES_DIR and os.path.exists(TEXTURES_DIR)) or (TEXTURE_FILE and os.path.exists(TEXTURE_FILE)):
+        if TEXTURES_DIR:
+            print(f"Remapping textures to: {TEXTURES_DIR}")
+        if TEXTURE_FILE:
+            print(f"Fallback texture: {TEXTURE_FILE}")
         for img in bpy.data.images:
             if img.filepath:
                 # Skip if the image already exists on disk at current path
@@ -80,7 +93,13 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
                     img.reload()
                     print(f"  Remapped: {img_basename}")
                 else:
-                    print(f"  ⚠️  Texture not found in {TEXTURES_DIR}: {img_basename}")
+                    # Try fallback texture file if provided
+                    if TEXTURE_FILE and os.path.exists(TEXTURE_FILE):
+                        img.filepath = TEXTURE_FILE
+                        img.reload()
+                        print(f"  Remapped to fallback: {img_basename} -> {os.path.basename(TEXTURE_FILE)}")
+                    else:
+                        print(f"  ⚠️  Texture not found in {TEXTURES_DIR}: {img_basename}")
 
     # collect all mesh objs
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
@@ -203,8 +222,24 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
 
     # Sun light if not unlit
     if not UNLIT:
+        # Main sun light
         bpy.ops.object.light_add(type='SUN', location=(3, -3, 5))
-        bpy.context.object.data.energy = 2.0
+        bpy.context.object.data.energy = 3.0
+
+        # Add fill lights from multiple angles to eliminate shadows
+        bpy.ops.object.light_add(type='SUN', location=(-3, 3, 5))
+        bpy.context.object.data.energy = 1.5
+
+        bpy.ops.object.light_add(type='SUN', location=(3, 3, 5))
+        bpy.context.object.data.energy = 1.5
+
+        # Add ambient light for better visibility
+        scene.world.use_nodes = True
+        world_nodes = scene.world.node_tree
+        bg_node = world_nodes.nodes.get('Background')
+        if bg_node:
+            bg_node.inputs['Color'].default_value = (0.9, 0.9, 0.9, 1.0)
+            bg_node.inputs['Strength'].default_value = 0.7
 
 
     # --- render 60 angles ---
@@ -213,7 +248,7 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
         cam.location = (radius * math.sin(angle) * math.sin(tilt),
                         -radius * math.cos(angle) * math.sin(tilt),
                         radius * math.cos(tilt))
-        scene.render.filepath = os.path.join(os.path.dirname(OUTPUT_PATH), f"{model_name}_{i:03d}.png")
+        scene.render.filepath = os.path.join(os.path.dirname(OUTPUT_PATH), f"{model_name}_{i:03d}.png".lower())
         bpy.ops.render.render(write_still=True)
     print(f"✅ Rendered 60 angles for {model_name}.")
 
