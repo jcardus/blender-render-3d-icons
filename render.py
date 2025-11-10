@@ -8,7 +8,7 @@ TEXTURE_FILE = os.environ.get("TEXTURE_FILE", None)     # Optional: fallback tex
 RECURSIVE = os.environ.get("RECURSIVE", "0") == "1"     # Search recursively for model files
 FILE_FILTER = os.environ.get("FILE_FILTER", "")       # Optional: string to filter file names (e.g., "truck" to match only files containing "truck")
 EXTENSIONS = os.environ.get("EXTENSIONS", "glb,gltf,blend,fbx,obj")  # Comma-separated list of extensions
-IMG = os.environ.get("IMG", 150)
+IMG = int(os.environ.get("IMG", 150))
 TILT = float(os.environ.get("TILT", "30"))              # 90 = top-down
 ANGLES = int(os.environ.get("ANGLES", "30"))            # Number of angles to render
 ENGINE = os.environ.get("ENGINE", "CYCLES")             # CYCLES is robust headless
