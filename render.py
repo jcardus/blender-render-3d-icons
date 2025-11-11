@@ -6,10 +6,10 @@ OUTPUT_PATH = os.environ.get("OUTPUT_PATH", "./render/")
 TEXTURES_DIR = os.environ.get("TEXTURES_DIR", None)     # Optional: directory containing texture files
 TEXTURE_FILE = os.environ.get("TEXTURE_FILE", None)     # Optional: fallback texture file to use
 RECURSIVE = os.environ.get("RECURSIVE", "0") == "1"     # Search recursively for model files
-FILE_FILTER = os.environ.get("FILE_FILTER", "")       # Optional: string to filter file names (e.g., "truck" to match only files containing "truck")
+FILE_FILTER = os.environ.get("FILE_FILTER", "")       # Optional: comma-separated strings to filter file names (e.g., "truck,pickup" to match files containing both "truck" AND "pickup")
 EXTENSIONS = os.environ.get("EXTENSIONS", "glb,gltf,blend,fbx,obj")  # Comma-separated list of extensions
 IMG = int(os.environ.get("IMG", 150))
-TILT = float(os.environ.get("TILT", "30"))              # 90 = top-down
+TILT = float(os.environ.get("TILT", "45"))              # 90 = top-down
 ANGLES = int(os.environ.get("ANGLES", "30"))            # Number of angles to render
 ENGINE = os.environ.get("ENGINE", "CYCLES")             # CYCLES is robust headless
 UNLIT = os.environ.get("UNLIT", "1") == "1"             # emission-only
@@ -28,12 +28,14 @@ else:
     if RECURSIVE:
         # Search recursively for model files
         if FILE_FILTER:
-            print(f"Searching recursively in {MODEL_DIR} for files matching '{FILE_FILTER}' with extensions: {ext_list}")
+            # Parse filter strings (comma-separated)
+            filter_list = [f.strip().lower() for f in FILE_FILTER.split(",") if f.strip()]
+            print(f"Searching recursively in {MODEL_DIR} for files matching ALL of {filter_list} with extensions: {ext_list}")
             for ext in ext_list:
                 pattern = os.path.join(MODEL_DIR, "**", f"*.{ext}")
                 all_files = glob.glob(pattern, recursive=True)
-                # Case-insensitive filter
-                glb_files.extend([f for f in all_files if FILE_FILTER.lower() in os.path.basename(f).lower()])
+                # Case-insensitive filter - ALL filter strings must be in filename
+                glb_files.extend([f for f in all_files if all(filter_str in os.path.basename(f).lower() for filter_str in filter_list)])
         else:
             print(f"Searching recursively in {MODEL_DIR} for extensions: {ext_list}")
             for ext in ext_list:
@@ -225,7 +227,7 @@ for model_idx, MODEL_PATH in enumerate(glb_files):
     if not UNLIT:
         # Main sun light
         bpy.ops.object.light_add(type='SUN', location=(3, -3, 5))
-        bpy.context.object.data.energy = 3.0
+        bpy.context.object.data.energy = 1.5
 
         # Add fill lights from multiple angles to eliminate shadows
         bpy.ops.object.light_add(type='SUN', location=(-3, 3, 5))

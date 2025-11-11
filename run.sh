@@ -16,7 +16,6 @@ OUTPUT_PATH="${OUTPUT_PATH:-../IdeaProjects/flutter_manager/assets/map/icons/}"
 # EXTENSIONS="${EXTENSIONS:-glb,gltf,blend,fbx,obj}"
 
 # Create output directory if it doesn't exist
-rm -rf "$OUTPUT_PATH"
 mkdir -p "$(dirname "$OUTPUT_PATH")"
 
 # Run Blender with the render script
@@ -26,4 +25,6 @@ mkdir -p "$(dirname "$OUTPUT_PATH")"
 # UNLIT=0 MODEL_DIR=./cars RECURSIVE=1 EXTENSIONS=fbx TEXTURES_DIR=./textures OUTPUT_PATH="$OUTPUT_PATH" blender -b -P render.py
 
 # Example: Render specific model file
-IMG=75 FILE_FILTER=veh_pickup_03 RECURSIVE=1 UNLIT=1 EXTENSIONS="obj" MODEL_DIR="./city_veh" TEXTURES_DIR=./textures TEXTURE_FILE=./textures/city_vehicles_pallete.png OUTPUT_PATH="$OUTPUT_PATH" blender -b -P render.py
+export MODEL_DIR="./city_veh" RECURSIVE=1 UNLIT=0 EXTENSIONS="obj"  TEXTURES_DIR=./textures TEXTURE_FILE=./textures/city_vehicles_pallete.png OUTPUT_PATH="$OUTPUT_PATH" IMG=75
+FILE_FILTER=veh_truck_02,red blender -b -P render.py
+FILE_FILTER=veh_truck_02,green blender -b -P render.py
